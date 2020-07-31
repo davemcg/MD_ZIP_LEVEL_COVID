@@ -1,17 +1,17 @@
 library(shiny)
-library(tidyverse)
+library(dplyr)
 library(tibbletime)
-library(cowplot)
 library(sf)
+library(tidyr)
 
 # Load Data ----
 ## MD ZIP Shapes -----
 st<- st_read('www/Maryland_Political_Boundaries_-_ZIP_Codes_-_5_Digit-shp/BNDY_ZIPCodes5Digit_MDP.shp')
 
 # https://data.imap.maryland.gov/datasets/mdcovid19-master-zip-code-cases/data
-md_zip_temporal <- read_csv('https://opendata.arcgis.com/datasets/5f459467ee7a4ffda968139011f06c46_0.csv')
+md_zip_temporal <- read.csv('https://opendata.arcgis.com/datasets/5f459467ee7a4ffda968139011f06c46_0.csv')
 
-md_zip_population <- read_csv('www/Maryland_Census_Data_-_ZIP_Code_Tabulation_Areas__ZCTAs_.csv') %>% 
+md_zip_population <- read.csv('www/Maryland_Census_Data_-_ZIP_Code_Tabulation_Areas__ZCTAs_.csv') %>% 
   select(ZCTA5CE10, POP100) %>% mutate(ZCTA5CE10 = as.character(ZCTA5CE10))
 colnames(md_zip_population) <- c('ZIP_CODE', 'Population')
 
@@ -110,7 +110,7 @@ server <- function(input, output, session) {
       ggplot(aes(x=date,y=rmPop, color = ZIP_CODE)) + 
       #geom_point() + 
       geom_line() + 
-      cowplot::theme_cowplot() +
+      theme_minimal() +
       ylab('New cases per 100,000 per day') +
       scale_color_brewer(palette = 'Set1')
   })
@@ -160,7 +160,8 @@ server <- function(input, output, session) {
       mutate(C = (Delta / Population / as.numeric(as.Date(input$md_date_range[2], origin = '1970-01-01') - as.Date(input$md_date_range[1], origin = '1970-01-01'))) * 100000, 
              C = case_when(C > 25 ~ 25, TRUE ~ C)) %>%
       mutate('Average of\nNew COVID19 Cases\nper 100,000 per Day' = C) %>% 
-      ggplot(aes(fill = `Average of\nNew COVID19 Cases\nper 100,000 per Day`)) + geom_sf(size = 0.1) + cowplot::theme_map() +
+      ggplot(aes(fill = `Average of\nNew COVID19 Cases\nper 100,000 per Day`)) + geom_sf(size = 0.1) + 
+      theme_void() +
       scale_fill_viridis_c() +
       coord_sf(xlim = map_scatter_ranges$x, ylim = map_scatter_ranges$y) 
     p
