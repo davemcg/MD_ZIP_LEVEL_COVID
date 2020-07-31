@@ -54,12 +54,12 @@ ani_data <-  st %>%
   mutate(C = case_when(rmPop > 25 ~ 25, TRUE ~ rmPop)) %>%
   mutate('New Cases\nper Day' = C) 
 
-ani_data$`New Cases\nper Day`[is.na(ani_data$`New Casesper Day` )] <- 0 # replace missing cases with 0 (which they presumably are)
-#ani_data$Date[is.na(ani_data$Date)] <- as.Date('2020-07-01')
+# ani_data$`New Cases\nper Day`[is.na(ani_data$`New Casesper Day` )] <- 0 # replace missing cases with 0 (which they presumably are)
+
 
 animation <- ani_data %>% filter(Date >= '2020-04-20', Date <= '2020-07-30') %>% 
   ggplot(aes(fill = `New Cases\nper Day`)) + geom_sf(size = 0.1) + cowplot::theme_map() +
-  scale_fill_viridis_c(option = 'magma') +
+  scale_fill_viridis_c(option = 'magma', na.value = 'gray60') +
   transition_manual(Date) + 
   labs(title = '{current_frame} Maryland Zip Code\nLevel Cases (Smoothed over 7 days)\nPer Capita (Scaled to 100,000)')
   
