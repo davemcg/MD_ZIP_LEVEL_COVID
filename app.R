@@ -40,8 +40,7 @@ ui <-   fluidPage(
                   br(),
                   fluidRow(column(8, offset = 1, 'Data taken from ', tags$a(href ='https://data.imap.maryland.gov/datasets/mdcovid19-master-zip-code-cases/data', 'Maryland GIS Data Catalog.'),' Both plots shows cases per day with the following adjustments to smooth out noise and correct for population differences in the zip codes: ')),
                   fluidRow(column(8, offset = 1, tags$ul( tags$li("Each day is averaged with the previous 6 days to create a ", tags$a(href = 'https://en.wikipedia.org/wiki/Moving_average', 'rolling mean.')), 
-                                                          tags$li("cases are divided by the 2010 census population and muliplied by 
-                             100,000 to adjust for population in each zip code.")))),  
+                                                          tags$li("Cases are divided by the 2010 census population and multiplied by 100,000 to adjust for population in each zip code.")))),  
                   br(),
                   fluidRow(column(8, offset = 1, selectizeInput('md_zip_codes', strong('Select up to 5 ZIP Codes: '),
                                                                 choices = NULL, selected = NULL, multiple = TRUE))),
