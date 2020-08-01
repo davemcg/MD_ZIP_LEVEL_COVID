@@ -9,9 +9,9 @@ library(tidyr)
 st<- st_read('www/Maryland_Political_Boundaries_-_ZIP_Codes_-_5_Digit-shp/BNDY_ZIPCodes5Digit_MDP.shp')
 
 # https://data.imap.maryland.gov/datasets/mdcovid19-master-zip-code-cases/data
-md_zip_temporal <- read.csv('https://opendata.arcgis.com/datasets/5f459467ee7a4ffda968139011f06c46_0.csv')
+md_zip_temporal <- read_csv('https://opendata.arcgis.com/datasets/5f459467ee7a4ffda968139011f06c46_0.csv')
 
-md_zip_population <- read.csv('www/Maryland_Census_Data_-_ZIP_Code_Tabulation_Areas__ZCTAs_.csv') %>% 
+md_zip_population <- read_csv('www/Maryland_Census_Data_-_ZIP_Code_Tabulation_Areas__ZCTAs_.csv') %>% 
   select(ZCTA5CE10, POP100) %>% mutate(ZCTA5CE10 = as.character(ZCTA5CE10))
 colnames(md_zip_population) <- c('ZIP_CODE', 'Population')
 
@@ -32,38 +32,41 @@ max_date <- md_zip_temporal %>%
 
 
 # Define UI ----
-ui <-   fluidPage(
-  titlePanel(column(8, offset = 1,'MD Zip Code Level COVID19 Case Trends')),
-  br(),
-  br(),
-  fluidRow(column(8, offset = 1, 'Data taken from ', tags$a(href ='https://data.imap.maryland.gov/datasets/mdcovid19-master-zip-code-cases/data', 'MD. '),'Both plots shows cases per day with the following adjustments to smooth out noise and correct for population differences in the zip codes: ')),
-  fluidRow(column(8, offset = 1, tags$ul( tags$li("Each day is averaged with the previous 6 days to create a ", tags$a(href = 'https://en.wikipedia.org/wiki/Moving_average', 'rolling mean.')), 
-                                          tags$li("cases are divided by the 2010 census population and muliplied by 
+ui <-   fluidPage( 
+                  theme = shinythemes::shinytheme(theme = 'flatly'),
+                  title = 'MD Zip Code Level COVID19 Case Trends',
+                  br(),
+                  fluidRow(column(8, offset = 1, h2('MD Zip Code Level COVID19 Case Trends'))),
+                  br(),
+                  fluidRow(column(8, offset = 1, 'Data taken from ', tags$a(href ='https://data.imap.maryland.gov/datasets/mdcovid19-master-zip-code-cases/data', 'Maryland GIS Data Catalog.'),' Both plots shows cases per day with the following adjustments to smooth out noise and correct for population differences in the zip codes: ')),
+                  fluidRow(column(8, offset = 1, tags$ul( tags$li("Each day is averaged with the previous 6 days to create a ", tags$a(href = 'https://en.wikipedia.org/wiki/Moving_average', 'rolling mean.')), 
+                                                          tags$li("cases are divided by the 2010 census population and muliplied by 
                              100,000 to adjust for population in each zip code.")))),  
-  br(),
-  fluidRow(column(8, offset = 1, selectizeInput('md_zip_codes', strong('Select up to 5 ZIP Codes: '),
-                                                choices = NULL, selected = NULL, multiple = TRUE))),
-  fluidRow(column(8, offset = 1, sliderInput('md_date_range', label = 'Date Range',
-                                             value = c(as.Date('2020-06-14'), as.Date('2020-07-30')),
-                                             min = as.Date(min_date),
-                                             max = as.Date(max_date)))),
-  fluidRow(column(8, offset = 1, plotOutput('zip_temporal'))),
-  br(),
-  fluidRow(''),
-  fluidRow(column(8, offset = 1, plotOutput('chloropleth',
-                                            dblclick = "map_dblclick",
-                                            brush = brushOpts(
-                                              id = "map_brush",
-                                              resetOnNew = TRUE
-                                            )))),
-  fluidRow(column(8, offset = 1, 'To zoom, click and drag to set box, double-click to zoom in. Double click again to re-set full state view.')),
-  br(),
-  fluidRow(column(8, offset = 1, 'Values over 25 re-set to 25 to remove the effects of low population zip codes with a (relatively) extremely high rate of infections.')),
-  br(),
-  fluidRow(column(8, offset = 1, 'Source code for this app ', tags$a(href = 'https://github.com/davemcg/MD_ZIP_LEVEL_COVID_APP', 'here.'))),
-  br(),
-  br()
-  
+                  br(),
+                  fluidRow(column(8, offset = 1, selectizeInput('md_zip_codes', strong('Select up to 5 ZIP Codes: '),
+                                                                choices = NULL, selected = NULL, multiple = TRUE))),
+                  fluidRow(column(8, offset = 1, sliderInput('md_date_range', label = 'Date Range',
+                                                             value = c(as.Date('2020-06-14'), as.Date(max_date)),
+                                                             min = as.Date(min_date),
+                                                             max = as.Date(max_date)))),
+                  fluidRow(column(8, offset = 1, plotOutput('zip_temporal'))),
+                  br(),
+                  fluidRow(''),
+                  fluidRow(column(8, offset = 1, plotOutput('chloropleth',
+                                                            dblclick = "map_dblclick",
+                                                            brush = brushOpts(
+                                                              id = "map_brush",
+                                                              resetOnNew = TRUE
+                                                            )))),
+                  fluidRow(column(8, offset = 1, 'To zoom, click and drag to set box, double-click to zoom in. Double click again to re-set full state view.')),
+                  br(),
+                  fluidRow(column(8, offset = 1, 'Values over 25 re-set to 25 to remove the effects of low population zip codes with a (relatively) extremely high rate of infections.')),
+                  br(),
+                  fluidRow(column(8, offset = 1, 'Source code for this app ', tags$a(href = 'https://github.com/davemcg/MD_ZIP_LEVEL_COVID_APP', 'here.'))),
+                  br(),
+                  br()
+                  
+                  
 )
 
 # Define server logic ----
@@ -110,8 +113,9 @@ server <- function(input, output, session) {
       ggplot(aes(x=date,y=rmPop, color = ZIP_CODE)) + 
       #geom_point() + 
       geom_line() + 
-      theme_minimal() +
+      cowplot::theme_cowplot() +
       ylab('New cases per 100,000 per day') +
+      xlab('Date') +
       scale_color_brewer(palette = 'Set1')
   })
   
@@ -127,7 +131,6 @@ server <- function(input, output, session) {
       map_scatter_ranges$x <- NULL
       map_scatter_ranges$y <- NULL
     }
-    cat(map_scatter_ranges$x)
   })
   
   output$chloropleth <- renderPlot({
