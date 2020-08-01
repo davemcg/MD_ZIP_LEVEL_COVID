@@ -1,3 +1,4 @@
+library(ggplot2)
 library(shiny)
 library(dplyr)
 library(tibbletime)
