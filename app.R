@@ -3,6 +3,7 @@ library(dplyr)
 library(tibbletime)
 library(sf)
 library(tidyr)
+library(readr)
 
 # Load Data ----
 ## MD ZIP Shapes -----
