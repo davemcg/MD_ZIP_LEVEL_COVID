@@ -174,7 +174,8 @@ server <- function(input, output, session) {
       theme_void() +
       scale_fill_viridis_c(breaks = c(0, 5, 10, 15, 20, 25),
                            labels = c(0, 5, 10, 15, 20, "25 or more")) +
-      coord_sf(xlim = map_scatter_ranges$x, ylim = map_scatter_ranges$y) 
+      coord_sf(xlim = map_scatter_ranges$x, ylim = map_scatter_ranges$y) + 
+      ggtitle(paste0(as.Date(input$md_date_range[1]), ' to ', as.Date(input$md_date_range[2])))
     cat(map_scatter_ranges$x)
     sum_zoom <- ((as.numeric(map_scatter_ranges$x[1]) - as.numeric(map_scatter_ranges$x[2])) %>% abs()) +
       ((as.numeric(map_scatter_ranges$y[1]) - as.numeric(map_scatter_ranges$y[2])) %>% abs())
