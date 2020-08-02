@@ -36,38 +36,59 @@ max_date <- md_zip_temporal %>%
 
 # Define UI ----
 ui <-   fluidPage( 
-                  theme = shinythemes::shinytheme(theme = 'flatly'),
-                  title = 'MD Zip Code Level COVID19 Case Trends',
-                  br(),
-                  fluidRow(column(8, offset = 1, h2('MD Zip Code Level COVID19 Case Trends'))),
-                  br(),
-                  fluidRow(column(8, offset = 1, 'Data taken from ', tags$a(href ='https://data.imap.maryland.gov/datasets/mdcovid19-master-zip-code-cases/data', 'Maryland GIS Data Catalog.'),' Both plots shows cases per day with the following adjustments to smooth out noise and correct for population differences in the zip codes: ')),
-                  fluidRow(column(8, offset = 1, tags$ul( tags$li("Each day is averaged with the previous 6 days to create a ", tags$a(href = 'https://en.wikipedia.org/wiki/Moving_average', 'rolling mean.')), 
-                                                          tags$li("Cases are divided by the 2010 census population and multiplied by 100,000 to adjust for population in each zip code.")))),  
-                  br(),
-                  fluidRow(column(8, offset = 1, selectizeInput('md_zip_codes', strong('Select up to 5 ZIP Codes: '),
-                                                                choices = NULL, selected = NULL, multiple = TRUE))),
-                  fluidRow(column(8, offset = 1, sliderInput('md_date_range', label = 'Date Range',
-                                                             value = c(as.Date('2020-06-14'), as.Date(max_date)),
-                                                             min = as.Date(min_date),
-                                                             max = as.Date(max_date)))),
-                  fluidRow(column(8, offset = 1, plotOutput('zip_temporal'))),
-                  br(),
-                  fluidRow(''),
-                  fluidRow(column(8, offset = 1, plotOutput('chloropleth',
-                                                            dblclick = "map_dblclick",
-                                                            brush = brushOpts(
-                                                              id = "map_brush",
-                                                              resetOnNew = TRUE
-                                                            )))),
-                  fluidRow(column(8, offset = 1, checkboxInput('zip_label', strong('Label zip codes on zoom in'), value = FALSE))),
-                  fluidRow(column(8, offset = 1, 'To zoom, click and drag to set box, double-click to zoom in. Double click again to re-set full state view.')),
-                  br(),
-                  fluidRow(column(8, offset = 1, 'Source code for this app ', tags$a(href = 'https://github.com/davemcg/MD_ZIP_LEVEL_COVID_APP', 'here.'))),
-                  br(),
-                  br()
-                  
-                  
+  theme = shinythemes::shinytheme(theme = 'flatly'),
+  title = 'MD Zip Code Level COVID19 Case Trends',
+  br(),
+  fluidRow(column(8, offset = 1, h2('MD Zip Code Level COVID19 Case Trends'))),
+  br(),
+  fluidRow(column(8, offset = 1, 'Data taken from ', 
+                  tags$a(href ='https://data.imap.maryland.gov/datasets/mdcovid19-master-zip-code-cases/data', 
+                         'Maryland GIS Data Catalog.'),
+                  ' Both plots shows cases per day with the following adjustments to smooth out noise and 
+                  correct for population differences in the zip codes: ')),
+  fluidRow(column(8, offset = 1, 
+                  tags$ul( tags$li("Each day is averaged with the previous 6 days to create a ", 
+                                   tags$a(href = 'https://en.wikipedia.org/wiki/Moving_average', 'rolling mean.')), 
+                           tags$li("Cases are divided by the 2010 census population and multiplied by 
+                                   100,000 to adjust for population in each zip code.")))),  
+  br(),
+  fluidRow(column(8, offset = 1, selectizeInput('md_zip_codes', strong('Select up to 5 ZIP Codes: '),
+                                                choices = NULL, selected = NULL, multiple = TRUE))),
+  fluidRow(column(8, offset = 1, sliderInput('md_date_range', label = 'Date Range',
+                                             value = c(as.Date('2020-06-14'), as.Date(max_date)),
+                                             min = as.Date(min_date),
+                                             max = as.Date(max_date)))),
+  fluidRow(column(8, offset = 1, plotOutput('zip_temporal'))),
+  br(),
+  fluidRow(''),
+  fluidRow(column(8, offset = 1, plotOutput('chloropleth',
+                                            dblclick = "map_dblclick",
+                                            brush = brushOpts(
+                                              id = "map_brush",
+                                              resetOnNew = TRUE
+                                            )))),
+  fluidRow(column(8, offset = 1, checkboxInput('zip_label', strong('Label zip codes on zoom in'), value = FALSE))),
+  fluidRow(column(8, offset = 1, 'To zoom, click and drag to set box, double-click to zoom in. Double click again to re-set full state view.')),
+  br(),
+  fluidRow(column(8, offset = 1, h3('Limitations'))),
+  fluidRow(column(8, offset = 1, 'I am NOT an epidemiologist, virologist, disease modeler, public health researcher, etc. These visualizations were made for my own curiosity and I thought they would be of general interest. It is possible that my data normalization is overly naive and skewed in some important way.')),
+  br(),
+  fluidRow(column(8, offset = 1, 'MD does not report total tests given by zip code and date (they do this at the county level). This means that if tests are doubled, you would expect cases to also double. This also means I cannot report the zip code level percent positive rate.')),
+  br(),
+  fluidRow(column(8, offset = 1, 'MD does not report (or I could not find) the methodology for how the zip code level data is recorded. It is possible/probable that cases that cannot be associated with a zip code are dropped. Therefore cases may be missing, which can potentially skew the data.')),
+  br(),
+  fluidRow(column(8, offset = 1, h3('Change Log'))),
+  fluidRow(column(8, offset = 1, ('2020-08-02: Limitations section added'))),
+  br(),
+  fluidRow(column(8, offset = 1, ('2020-08-01: Added county lines in white, ability to overlay zip codes labels when zooming in. Made legend more clear in MD chloropleth plot'))),
+  br(),
+  fluidRow(column(8, offset = 1, ('2020-07-31: Release!'))),
+  br(),
+  fluidRow(column(8, offset = 1, h3('Sources'))),
+  fluidRow(column(8, offset = 1, 'Source code for this app (which also show exactly where the data is from and the manipulations done in R) can be found ', tags$a(href = 'https://github.com/davemcg/MD_ZIP_LEVEL_COVID_APP', 'here.'))),
+  br()
+  
+  
 )
 
 # Define server logic ----
@@ -163,7 +184,8 @@ server <- function(input, output, session) {
     
     p <- st %>%
       left_join(hot_spots, by = c('ZIPCODE1' = 'ZIP_CODE')) %>%
-      mutate(C = (Delta / Population / as.numeric(as.Date(input$md_date_range[2], origin = '1970-01-01') - as.Date(input$md_date_range[1], origin = '1970-01-01'))) * 100000, 
+      mutate(C = (Delta / Population / as.numeric(as.Date(input$md_date_range[2], origin = '1970-01-01') - 
+                                                    as.Date(input$md_date_range[1], origin = '1970-01-01'))) * 100000, 
              C = case_when(C > 25 ~ 25, TRUE ~ C)) %>%
       mutate('Average of\nNew COVID19 Cases\nper 100,000 per Day' = C) %>% 
       ggplot() + 
