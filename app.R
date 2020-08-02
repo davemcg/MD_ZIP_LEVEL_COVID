@@ -4,12 +4,13 @@ library(dplyr)
 library(tibbletime)
 library(sf)
 library(tidyr)
+library(Cairo)
 library(readr)
 
 # Load Data ----
 ## MD ZIP Shapes -----
 st<- st_read('www/Maryland_Political_Boundaries_-_ZIP_Codes_-_5_Digit-shp/BNDY_ZIPCodes5Digit_MDP.shp')
-
+st_county <- st_read('www/Maryland_Physical_Boundaries_-_County_Boundaries__Generalized_-shp/BNDY_CountyPhyBoundaryGen_DoIT.shp')
 # https://data.imap.maryland.gov/datasets/mdcovid19-master-zip-code-cases/data
 md_zip_temporal <- read_csv('https://opendata.arcgis.com/datasets/5f459467ee7a4ffda968139011f06c46_0.csv')
 
@@ -59,9 +60,8 @@ ui <-   fluidPage(
                                                               id = "map_brush",
                                                               resetOnNew = TRUE
                                                             )))),
+                  fluidRow(column(8, offset = 1, checkboxInput('zip_label', strong('Label zip codes on zoom in'), value = FALSE))),
                   fluidRow(column(8, offset = 1, 'To zoom, click and drag to set box, double-click to zoom in. Double click again to re-set full state view.')),
-                  br(),
-                  fluidRow(column(8, offset = 1, 'Values over 25 re-set to 25 to remove the effects of low population zip codes with a (relatively) extremely high rate of infections.')),
                   br(),
                   fluidRow(column(8, offset = 1, 'Source code for this app ', tags$a(href = 'https://github.com/davemcg/MD_ZIP_LEVEL_COVID_APP', 'here.'))),
                   br(),
@@ -117,7 +117,7 @@ server <- function(input, output, session) {
       cowplot::theme_cowplot() +
       ylab('New cases per 100,000 per day') +
       xlab('Date') +
-      scale_color_brewer(palette = 'Set1')
+      scale_color_brewer(palette = 'Set1') 
   })
   
   map_scatter_ranges <- reactiveValues(x = NULL, y = NULL)
@@ -132,10 +132,12 @@ server <- function(input, output, session) {
       map_scatter_ranges$x <- NULL
       map_scatter_ranges$y <- NULL
     }
+    cat(map_scatter_ranges$x)
+    cat('\n')
+    cat(map_scatter_ranges$y)
   })
   
   output$chloropleth <- renderPlot({
-    cat(input$md_date_range)
     hot_spots <- md_zip_temporal %>%
       pivot_longer(cols = all_of(dates)) %>%
       #filter(ZIP_CODE %in% c(20814, 202722, 20782,20783,20740,20742, 20912,20781)) %>%
@@ -164,11 +166,28 @@ server <- function(input, output, session) {
       mutate(C = (Delta / Population / as.numeric(as.Date(input$md_date_range[2], origin = '1970-01-01') - as.Date(input$md_date_range[1], origin = '1970-01-01'))) * 100000, 
              C = case_when(C > 25 ~ 25, TRUE ~ C)) %>%
       mutate('Average of\nNew COVID19 Cases\nper 100,000 per Day' = C) %>% 
-      ggplot(aes(fill = `Average of\nNew COVID19 Cases\nper 100,000 per Day`)) + geom_sf(size = 0.1) + 
+      ggplot() + 
+      geom_sf(aes(fill = `Average of\nNew COVID19 Cases\nper 100,000 per Day`, 
+                  label = ZIPCODE1),
+              size = 0.1) +
+      geom_sf(data = st_county, color = 'white', size = 0.2, fill = NA, aes(label = NA)) +
       theme_void() +
-      scale_fill_viridis_c() +
+      scale_fill_viridis_c(breaks = c(0, 5, 10, 15, 20, 25),
+                           labels = c(0, 5, 10, 15, 20, "25 or more")) +
       coord_sf(xlim = map_scatter_ranges$x, ylim = map_scatter_ranges$y) 
-    p
+    cat(map_scatter_ranges$x)
+    sum_zoom <- ((as.numeric(map_scatter_ranges$x[1]) - as.numeric(map_scatter_ranges$x[2])) %>% abs()) +
+      ((as.numeric(map_scatter_ranges$y[1]) - as.numeric(map_scatter_ranges$y[2])) %>% abs())
+    #()
+    cat('\n')
+    cat(sum_zoom)
+    cat('\n')
+    if (length(sum_zoom) == 0){
+      p
+    } else if (sum_zoom < 100000 & input$zip_label){
+      p + geom_sf_label(size = 4, alpha = 0.3, aes(label = ZIPCODE1), data = st)
+    } else {p}
+    #p
   })
   
   
