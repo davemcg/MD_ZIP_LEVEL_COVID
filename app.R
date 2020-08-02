@@ -68,6 +68,8 @@ ui <-   fluidPage(
                                               resetOnNew = TRUE
                                             )))),
   fluidRow(column(8, offset = 1, checkboxInput('zip_label', strong('Label zip codes on zoom in'), value = FALSE))),
+  fluidRow(column(8, offset = 1, 'Missing values are colored as gray.')),
+  br(),
   fluidRow(column(8, offset = 1, 'To zoom, click and drag to set box, double-click to zoom in. Double click again to re-set full state view.')),
   br(),
   fluidRow(column(8, offset = 1, h3('Limitations'))),
@@ -78,7 +80,7 @@ ui <-   fluidPage(
   fluidRow(column(8, offset = 1, 'MD does not report (or I could not find) the methodology for how the zip code level data is recorded. It is possible/probable that cases that cannot be associated with a zip code are dropped. Therefore cases may be missing, which can potentially skew the data.')),
   br(),
   fluidRow(column(8, offset = 1, h3('Change Log'))),
-  fluidRow(column(8, offset = 1, ('2020-08-02: Limitations section added'))),
+  fluidRow(column(8, offset = 1, ('2020-08-02: Limitations section added. Chloropleth now displays missing data in a zip code with gray color.'))),
   br(),
   fluidRow(column(8, offset = 1, ('2020-08-01: Added county lines in white, ability to overlay zip codes labels when zooming in. Made legend more clear in MD chloropleth plot'))),
   br(),
@@ -164,7 +166,7 @@ server <- function(input, output, session) {
       #filter(ZIP_CODE %in% c(20814, 202722, 20782,20783,20740,20742, 20912,20781)) %>%
       mutate(date = gsub('^F','',name) %>% gsub('^total','',.) %>%
                lubridate::parse_date_time(orders = 'mdy')) %>%
-      mutate(value = case_when(is.na(value) ~ 0, TRUE ~ value)) %>%
+      #mutate(value = case_when(is.na(value) ~ 0, TRUE ~ value)) %>%
       mutate(Diff = value - lag(value)) %>%
       filter(!is.na(Diff), Diff >= 0) %>%
       mutate(ZIP_CODE = as.character(ZIP_CODE)) %>%
