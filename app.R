@@ -7,6 +7,7 @@ library(tidyr)
 library(Cairo)
 library(readr)
 
+load('www/announcements.Rdata')
 # Load Data ----
 ## MD ZIP Shapes -----
 st<- st_read('www/Maryland_Political_Boundaries_-_ZIP_Codes_-_5_Digit-shp/BNDY_ZIPCodes5Digit_MDP.shp')
@@ -68,9 +69,13 @@ ui <-   fluidPage(
                                               resetOnNew = TRUE
                                             )))),
   fluidRow(column(8, offset = 1, checkboxInput('zip_label', strong('Label zip codes on zoom in'), value = FALSE))),
-  fluidRow(column(8, offset = 1, 'Missing values are colored as gray.')),
+  fluidRow(column(8, offset = 1, 'Zip codes with no reported cases are colored as gray.')),
   br(),
   fluidRow(column(8, offset = 1, 'To zoom, click and drag to set box, double-click to zoom in. Double click again to re-set full state view.')),
+  br(),
+  fluidRow(column(8, offset = 1, h3('News'))),
+  fluidRow(column(8, offset = 1, tableOutput('table'))),
+  fluidRow(column(8, offset = 1, 'News hand-curated from ', tags$a(href ='https://www.washingtonpost.com/graphics/2020/national/states-reopening-coronavirus-map/?itid=sn_coronavirus_4', 'Washington Post'))),
   br(),
   fluidRow(column(8, offset = 1, h3('Limitations'))),
   fluidRow(column(8, offset = 1, 'I am NOT an epidemiologist, virologist, disease modeler, public health researcher, etc. These visualizations were made for my own curiosity and I thought they would be of general interest. It is possible that my data normalization is overly naive and skewed in some important way.')),
@@ -79,15 +84,19 @@ ui <-   fluidPage(
   br(),
   fluidRow(column(8, offset = 1, 'MD does not report (or I could not find) the methodology for how the zip code level data is recorded. It is possible/probable that cases that cannot be associated with a zip code are dropped. Therefore cases may be missing, which can potentially skew the data.')),
   br(),
+  fluidRow(column(8, offset = 1, 'There is no information on WHEN the case was reported. As there are many steps in the chain to report a case (person feels ill - gets test - waits for result - result gets reported to MD - data gets added to the database) it is possible that trends you see may have actually occurred week(s) ago.')),
+  br(),
   fluidRow(column(8, offset = 1, h3('Change Log'))),
-  fluidRow(column(8, offset = 1, ('2020-08-02: Limitations section added. Chloropleth now displays missing data in a zip code with gray color.'))),
+  fluidRow(column(8, offset = 1, ('2020-08-05: Another limitation added. Brief news section added.'))),
+  br(),
+  fluidRow(column(8, offset = 1, ('2020-08-02: Limitations section added.'))),
   br(),
   fluidRow(column(8, offset = 1, ('2020-08-01: Added county lines in white, ability to overlay zip codes labels when zooming in. Made legend more clear in MD chloropleth plot'))),
   br(),
   fluidRow(column(8, offset = 1, ('2020-07-31: Release!'))),
   br(),
   fluidRow(column(8, offset = 1, h3('Sources'))),
-  fluidRow(column(8, offset = 1, 'Source code for this app (which also show exactly where the data is from and the manipulations done in R) can be found ', tags$a(href = 'https://github.com/davemcg/MD_ZIP_LEVEL_COVID_APP', 'here.'))),
+  fluidRow(column(8, offset = 1, 'Source code for this app (which also show sexactly where the data is from and the manipulations done in R) can be found ', tags$a(href = 'https://github.com/davemcg/MD_ZIP_LEVEL_COVID_APP', 'here.'))),
   br()
   
   
@@ -102,15 +111,15 @@ server <- function(input, output, session) {
                        selected = c('20782', '20910', '21201'),
                        server = TRUE)
   
+  output$table <- renderTable(announcements %>% select(-Label))
   
-  
-  output$zip_temporal <- renderPlot({ 
+  output$zip_temporal <- renderPlot({
     # Zip codes with largest shifts from mid July to early July
     # taking latest date - or / 7/1 with 7 day rolling mean
     
     # plotting cases per day (7 day rolling mean) by zip code
     md_total_temporal <- md_total_temporal %>% 
-      mutate(Diff = value - lag(value)) %>% 
+      mutate(Diff = value - lag(value, na.rm = TRUE)) %>% 
       filter(!is.na(Diff), Diff >= 0) %>% 
       mutate(rm = zoo::rollmean(x = Diff, 7, 
                                 na.pad=TRUE, align="right")) %>% 
@@ -161,23 +170,28 @@ server <- function(input, output, session) {
   })
   
   output$chloropleth <- renderPlot({
+    delta <- as.Date(input$md_date_range)[2] - as.Date(input$md_date_range)[1]
+    cat(delta)
+    cat(class(delta))
+    
     hot_spots <- md_zip_temporal %>%
       pivot_longer(cols = all_of(dates)) %>%
-      #filter(ZIP_CODE %in% c(20814, 202722, 20782,20783,20740,20742, 20912,20781)) %>%
       mutate(date = gsub('^F','',name) %>% gsub('^total','',.) %>%
                lubridate::parse_date_time(orders = 'mdy')) %>%
+      filter(!is.na(value)) %>% 
       #mutate(value = case_when(is.na(value) ~ 0, TRUE ~ value)) %>%
-      mutate(Diff = value - lag(value)) %>%
-      filter(!is.na(Diff), Diff >= 0) %>%
+      mutate(Diff = value - lag(value, na.rm = TRUE)) %>%
+      #filter(!is.na(Diff), Diff >= 0) %>%
       mutate(ZIP_CODE = as.character(ZIP_CODE)) %>%
       group_by(ZIP_CODE) %>%
-      mutate(rm = zoo::rollmean(x = value, 7,
+      mutate(rm = zoo::rollmean(x = value, as.numeric(delta), na.rm = TRUE,
                                 na.pad=TRUE, align="right")) %>%
       filter(date == as.Date(input$md_date_range[1], origin = '1970-01-01') | 
                date == as.Date(input$md_date_range[2], origin = '1970-01-01')) %>%
       select(-name,  -OBJECTID, -value, -Diff) %>%
       pivot_wider(values_from = 'rm', names_from = 'date') 
     colnames(hot_spots)[c(2,3)] <- c('start','end')
+    hot_spots[is.na(hot_spots)] <- 0
     hot_spots <- hot_spots %>%
       mutate(Ratio = (end + 1) / (start + 1),
              Delta = end - start) %>%
