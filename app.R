@@ -113,7 +113,7 @@ server <- function(input, output, session) {
                        selected = c('20782', '20910', '21201'),
                        server = TRUE)
   
-  output$table <- renderTable(announcements %>% select(-Label))
+  output$table <- renderTable(announcements)
   
   output$zip_temporal <- renderPlot({
     # Zip codes with largest shifts from mid July to early July
