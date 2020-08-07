@@ -9,7 +9,8 @@ announcements <- tibble::tribble(
   "2020-07-14", "Hogan urges local leaders across his state to take bolder<br>steps to enforce physical distancing and mask requirements",
   "2020-07-22",                                                                                     "Baltimore suspends indoor dining",
   "2020-07-29",                                                                                           "Hogan expands mask mandate",
-  "2020-08-04", "Tropical Storm Isaias passes through MD, case reports may fluctuate"
+  "2020-08-04", "Tropical Storm Isaias passes through MD, case reports may fluctuate",
+  "2020-08-07", "Baltimore restaurants reopen at 25 percent capacity"
   )
 announcements$Date <- as.character(announcements$Date, origin = '1970-01-01')
 announcements$Label <- seq(1:9)

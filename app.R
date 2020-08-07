@@ -84,9 +84,11 @@ ui <-   fluidPage(
   br(),
   fluidRow(column(8, offset = 1, 'MD does not report (or I could not find) the methodology for how the zip code level data is recorded. It is possible/probable that cases that cannot be associated with a zip code are dropped. Therefore cases may be missing, which can potentially skew the data.')),
   br(),
-  fluidRow(column(8, offset = 1, 'There is no information on WHEN the case was reported. As there are many steps in the chain to report a case (person feels ill - gets test - waits for result - result gets reported to MD - data gets added to the database) it is possible that trends you see may have actually occurred week(s) ago.')),
+  fluidRow(column(8, offset = 1, 'There is no information on WHEN the case was reported. As there are many steps in the chain to report a case (person feels ill - gets test - waits for result - result gets reported to MD - data gets added to the database) it is possible that trends you see may have actually occurred week(s) ago. I have seen a few modelers use a 14 day lag between infection -> positive test.')),
   br(),
   fluidRow(column(8, offset = 1, h3('Change Log'))),
+  fluidRow(column(8, offset = 1, ('2020-08-07: My partner informs me "sexactly" is not a word. New news added.'))),
+  br(),
   fluidRow(column(8, offset = 1, ('2020-08-05: Another limitation added. Brief news section added.'))),
   br(),
   fluidRow(column(8, offset = 1, ('2020-08-02: Limitations section added.'))),
@@ -96,7 +98,7 @@ ui <-   fluidPage(
   fluidRow(column(8, offset = 1, ('2020-07-31: Release!'))),
   br(),
   fluidRow(column(8, offset = 1, h3('Sources'))),
-  fluidRow(column(8, offset = 1, 'Source code for this app (which also show sexactly where the data is from and the manipulations done in R) can be found ', tags$a(href = 'https://github.com/davemcg/MD_ZIP_LEVEL_COVID_APP', 'here.'))),
+  fluidRow(column(8, offset = 1, 'Source code for this app (which also shows exactly where the data is from and the manipulations done in R) can be found ', tags$a(href = 'https://github.com/davemcg/MD_ZIP_LEVEL_COVID_APP', 'here.'))),
   br()
   
   
