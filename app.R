@@ -7,18 +7,33 @@ library(tidyr)
 library(Cairo)
 library(readr)
 
+load('www/zip_county_table.Rdata')
 load('www/announcements.Rdata')
 # Load Data ----
 ## MD ZIP Shapes -----
 st<- st_read('www/Maryland_Political_Boundaries_-_ZIP_Codes_-_5_Digit-shp/BNDY_ZIPCodes5Digit_MDP.shp')
 st_county <- st_read('www/Maryland_Physical_Boundaries_-_County_Boundaries__Generalized_-shp/BNDY_CountyPhyBoundaryGen_DoIT.shp')
+# covid cases by date and zip 
 # https://data.imap.maryland.gov/datasets/mdcovid19-master-zip-code-cases/data
 md_zip_temporal <- read_csv('https://opendata.arcgis.com/datasets/5f459467ee7a4ffda968139011f06c46_0.csv')
+# covid TESTs given by date and county
+md_tests_temporal <- read_csv('https://opendata.arcgis.com/datasets/fdedcfbed9af43f8b79c87c53229a0d8_0.csv')
+md_tests_total <- md_tests_temporal %>% 
+  pivot_longer(cols = starts_with('d')) %>% 
+  select(-OBJECTID) %>% 
+  mutate(date = gsub('^d','',name) %>% gsub('^_','',.) %>% 
+           lubridate::parse_date_time(orders = 'mdy'))
+
 
 md_zip_population <- read_csv('www/Maryland_Census_Data_-_ZIP_Code_Tabulation_Areas__ZCTAs_.csv') %>% 
   select(ZCTA5CE10, POP100) %>% mutate(ZCTA5CE10 = as.character(ZCTA5CE10))
 colnames(md_zip_population) <- c('ZIP_CODE', 'Population')
-
+# population by county
+county_pop_by_name <- md_zip_population %>% 
+  left_join(zip_county_table %>% 
+              mutate(ZIP_CODE = as.character(ZIP_CODE))) %>% 
+  group_by(County) %>% 
+  summarise(Population = sum(Population)) 
 dates <- grep('^F\\d|^total\\d', colnames(md_zip_temporal), value = TRUE)
 
 md_total_temporal <- md_zip_temporal %>% 
@@ -27,7 +42,10 @@ md_total_temporal <- md_zip_temporal %>%
   group_by(name) %>% 
   summarise(value = sum(value, na.rm = TRUE)) %>% 
   mutate(date = gsub('^F','',name) %>% gsub('^total','',.) %>% 
-           lubridate::parse_date_time(orders = 'mdy'))
+           lubridate::parse_date_time(orders = 'mdy'))%>% 
+  mutate(date = as.character(date)) %>% 
+  arrange(date) %>% 
+  mutate(date = as.Date(date))
 min_date <- as.Date('2020-04-20')
 max_date <- md_zip_temporal %>% 
   pivot_longer(cols = all_of(dates)) %>% 
@@ -56,12 +74,15 @@ ui <-   fluidPage(
   fluidRow(column(8, offset = 1, selectizeInput('md_zip_codes', strong('Select up to 5 ZIP Codes: '),
                                                 choices = NULL, selected = NULL, multiple = TRUE))),
   fluidRow(column(8, offset = 1, sliderInput('md_date_range', label = 'Date Range',
-                                             value = c(as.Date('2020-06-14'), as.Date(max_date)),
+                                             value = c(as.Date(max_date)-14, as.Date(max_date)),
                                              min = as.Date(min_date),
                                              max = as.Date(max_date)))),
   fluidRow(column(8, offset = 1, plotOutput('zip_temporal'))),
   br(),
-  fluidRow(''),
+  fluidRow(column(8, offset = 1, selectizeInput('md_county', strong('Select up to 5 Counties: '),
+                                                choices = NULL, selected = NULL, multiple = TRUE))),
+  fluidRow(column(8, offset = 1, plotOutput('md_county_testing'))),
+  br(),
   fluidRow(column(8, offset = 1, plotOutput('chloropleth',
                                             dblclick = "map_dblclick",
                                             brush = brushOpts(
@@ -112,8 +133,14 @@ server <- function(input, output, session) {
                        options = list(placeholder = 'Type to search'),
                        selected = c('20782', '20910', '21201'),
                        server = TRUE)
+  updateSelectizeInput(session, 'md_county',
+                       choices = zip_county_table$County %>% unique() %>% sort(),
+                       options = list(placeholder = 'Type to search'),
+                       selected = c("Baltimore City", "Prince George's"),
+                       server = TRUE)
   
-  output$table <- renderTable(announcements)
+  
+  output$table <- renderTable(announcements %>% arrange(desc(Date)))
   
   output$zip_temporal <- renderPlot({
     # Zip codes with largest shifts from mid July to early July
@@ -147,13 +174,52 @@ server <- function(input, output, session) {
              date <= input$md_date_range[2]) %>% 
       ggplot(aes(x=date,y=rmPop, color = ZIP_CODE)) + 
       #geom_point() + 
-      geom_line() + 
+      geom_line(size = 2) + 
       cowplot::theme_cowplot() +
       ylab('New cases per 100,000 per day') +
       xlab('Date') +
-      scale_color_brewer(palette = 'Set1') 
+      scale_color_brewer(palette = 'Set1') +
+      theme(legend.position="bottom") +
+      ggtitle("Scaled COVID Cases per Zip")
   })
   
+  # county_pop_by_name$Population %>% sum() == 5773552
+  output$md_county_testing <- renderPlot({
+    md_tests_total <- md_tests_temporal %>% 
+      pivot_longer(cols = starts_with('d')) %>% 
+      select(-OBJECTID) %>% 
+      group_by(name) %>% 
+      summarise(value = sum(value)) %>% 
+      mutate(value = (value / 5773552) * 100000) %>% 
+      mutate(date = gsub('^d','',name) %>% gsub('^_','',.) %>% 
+               lubridate::parse_date_time(orders = 'mdy')) %>% 
+      mutate(rm = zoo::rollmean(x = value, 7, 
+                                na.pad=TRUE, align="right")) %>% 
+      mutate(County = 'MD')
+      
+    county_tests <- 
+      md_tests_temporal %>% 
+      pivot_longer(cols = starts_with('d')) %>% 
+      select(-OBJECTID) %>% 
+      left_join(county_pop_by_name) %>%
+      mutate(value = (value / Population) * 100000) %>% 
+      filter(County %in% input$md_county) %>% 
+      mutate(date = gsub('^d','',name) %>% gsub('^_','',.) %>% 
+               lubridate::parse_date_time(orders = 'mdy')) %>% 
+      mutate(rm = zoo::rollmean(x = value, 7, 
+                                na.pad=TRUE, align="right")) 
+    
+    bind_rows(md_tests_total, county_tests) %>% 
+      filter(date >= input$md_date_range[1],
+             date <= input$md_date_range[2]) %>% 
+      ggplot(aes(x=date,y=value, color = County)) + 
+      geom_line(aes(y=rm), size = 2) +
+      cowplot::theme_cowplot() +
+      scale_color_brewer(palette = 'Set2') +
+      ylab('Tests given per 100,000 per day') +
+      theme(legend.position="bottom")+
+      ggtitle("Scaled COVID Tests per County")
+  })
   map_scatter_ranges <- reactiveValues(x = NULL, y = NULL)
   
   observeEvent(input$map_dblclick, {
